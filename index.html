@@ -146,6 +146,8 @@
 
       // Setup autocomplete for the new input
       setupAutocomplete();
+
+      enableEnterKeySearch();
     }
 
     function removeSearchTerm(button) {
@@ -206,15 +208,19 @@
     });
 
     // Enable Enter key to trigger search
-    document.querySelectorAll('.search-input').addEventListener('keyup', function (event) {
-      // Number 13 is the "Enter" key on the keyboard
-      if (event.keyCode === 13) {
-        // Cancel the default action, if needed
-        event.preventDefault();
-        // Trigger the button element with a click
-        document.getElementById("searchBtn").click();
-      }
-    });
+    function enableEnterKeySearch() {
+      document.querySelectorAll('.search-input').forEach(input => {
+        input.addEventListener('keyup', function (event) {
+          // Number 13 is the "Enter" key on the keyboard
+          if (event.keyCode === 13) {
+            // Cancel the default action, if needed
+            event.preventDefault();
+            // Trigger the button element with a click
+            document.querySelector("#searchBtn").click();
+          }
+        });
+      });
+    }
 
     document.querySelector('#associationBtn').addEventListener('click', function (event) {
       event.preventDefault();
@@ -244,6 +250,7 @@
 
     addNewSearchBtn();
     setupAutocomplete();
+    enableEnterKeySearch();
   </script>
 </body>
 
