@@ -185,7 +185,7 @@
     document.getElementById('searchForm').addEventListener('submit', function (event) {
       event.preventDefault();
 
-      const inputTerms = Array.from(this.querySelectorAll('input[name="term"]')).map(input => input.value);
+      const inputTerms = Array.from(this.querySelectorAll('.search-input')).map(input => input.value);
       if (inputTerms.length === 0) {
         return;
       }
@@ -193,14 +193,23 @@
         searchTerm(inputTerms[0]);
         return;
       }
+      
+      const conditions = Array.from(this.querySelectorAll('.condition-select')).map(select => select.value);
 
-      const conditions = Array.from(this.querySelectorAll('select[name="condition"]')).map(select => select.value);
+      let indexOfTermsToRemove = [];
 
       inputTerms.forEach((term, index) => {
         if (term.trim() === '') {
-          inputTerms.splice(index, 1);
-          conditions.splice(index-1, 1);
+          // Add index to remove
+          indexOfTermsToRemove.push(index);
         }
+      });
+
+      // Remove empty terms and corresponding conditions
+      // Reverse the index array to avoid messing up the indices when removing
+      indexOfTermsToRemove.reverse().forEach(index => {
+        inputTerms.splice(index, 1);
+        conditions.splice(index - 1, 1);
       });
 
       searchTerm(inputTerms, conditions);
