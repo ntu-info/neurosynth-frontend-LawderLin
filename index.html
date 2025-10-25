@@ -14,7 +14,7 @@
 </head>
 
 <body>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
     <a class="navbar-brand" href="#">Neurosynth</a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
       aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,12 +35,12 @@
       </div>
       <form id="searchForm" autocomplete="off" class="mt-5 col-12" action="/studies.html" method="GET">
         <div class="row">
-          <div class="mb-2 offset-md-4 col-md-4 d-flex justify-content-center">
+          <div class="mb-2 offset-md-4  d-flex justify-content-center">
             <div class="autocomplete mr-2">
-              <input type="text" required id="searchInput" class="search-input form-control"
-                placeholder="Search terms for study!" name="term" />
+              <input type="text" required id="searchInput" class="search-input form-control" placeholder="Search terms for study!" name="term" />
             </div>
             <button id="searchBtn" type="submit" class="btn btn-primary mr-2">Search</button>
+            <button id="associationBtn" type="submit" class="btn btn-primary mr-2">Associated Terms</button>
           </div>
         </div>
       </form>
@@ -127,7 +127,7 @@
             <option value="not">Not</option>
           </select>
         </div>
-        <div class="col-md-4 d-flex justify-content-center">
+        <div class=" d-flex">
           <div class="autocomplete mr-2">
             <input type="text" class="search-input form-control" placeholder="Search terms for study!" name="term"/>
           </div>
@@ -159,8 +159,8 @@
       newSearchBtn.classList.add('row', 'mb-2', 'd-flex', 'justify-content-center');
       newSearchBtn.id = 'newSearchBtn';
       newSearchBtn.innerHTML = `
-        <button class="btn btn-secondary col-md-2 mr-2">Adding search term</button>
-        <a href="terms.html" class="btn btn-outline-secondary col-md-2 ">All Terms</a>
+        <button class="btn btn-secondary mr-2">Adding search term</button>
+        <a href="terms.html" class="btn btn-outline-secondary ">All Terms</a>
       `;
       document.getElementById('searchForm').appendChild(newSearchBtn);
       newSearchBtn.querySelector('button').addEventListener('click', function (event) {
@@ -206,7 +206,7 @@
     });
 
     // Enable Enter key to trigger search
-    document.querySelector('input[name="term"]').addEventListener('keyup', function (event) {
+    document.querySelectorAll('.search-input').addEventListener('keyup', function (event) {
       // Number 13 is the "Enter" key on the keyboard
       if (event.keyCode === 13) {
         // Cancel the default action, if needed
@@ -214,6 +214,32 @@
         // Trigger the button element with a click
         document.getElementById("searchBtn").click();
       }
+    });
+
+    document.querySelector('#associationBtn').addEventListener('click', function (event) {
+      event.preventDefault();
+
+      const inputTerms = Array.from(document.querySelectorAll('.search-input')).map(input => input.value);
+
+      // If input is empty, do nothing
+      if (inputTerms.length === 0 || inputTerms.some(term => term.trim() === '')) {
+        return;
+      }
+
+      // Check for multiple terms
+      if (inputTerms.length > 1) {
+        alert('Please enter a single term for associated terms search.');
+        return;
+      }
+
+      // Check if the term exists in the fetched terms
+      if (!allTerms.includes(inputTerms[0].trim().toLowerCase())) {
+        alert('Term "' + inputTerms[0] + '" is not in the available list. Please try another term, or check the \"All Terms\" page.');
+        return;
+      }
+
+      const inputTerm = inputTerms[0];
+      window.location.href = `term_association.html?term=${encodeURIComponent(inputTerm)}`;
     });
 
     addNewSearchBtn();

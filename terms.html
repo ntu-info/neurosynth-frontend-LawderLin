@@ -11,7 +11,7 @@
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
         <a class="navbar-brand" href="index.html">Neurosynth</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
             aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -26,23 +26,23 @@
         </div>
     </nav>
     <div class="container mt-4">
-        <h1>All Available Terms</h1>
-        <div class="row"><button id="btn" class="btn-primary offset-md-4 col-md-4">Fetch</button></div>
+        <h1 class="text-center">All Available Terms</h1>
+        <div class="row"><button id="btn" class="btn btn-primary offset-md-4 col-md-4 mb-4">Fetch</button></div>
         <div class="row">
             <div class="col-md-10" id="fetch-terms">
                 <pre id="out">Loading…</pre>
             </div>
-            <div class="col-md-2 sticky-top overflow-auto" style="height: 80vh; top: 2rem;">
+            <div class="col-md-2 sticky-top overflow-auto" style="height: 80vh; top: 4rem;">
                 <ul class="list-group" id="term-group-link-list">
                 </ul>
             </div>
-    </div>
+        </div>
     <script>
-        // Create link to each group
         function smoothScrollTo(elementId) {
             document.getElementById(elementId).scrollIntoView({ behavior: 'smooth' });
         }
-
+        
+        // Create link to each group
         async function createGroupLinks() {
             await fetchTerms();
             document.querySelectorAll('.term-group').forEach(group => {
@@ -66,7 +66,7 @@
             const out = document.getElementById('out');
             out.textContent = 'Requesting…';
             try {
-                const resp = await fetch('./terms.json');
+                const resp = await fetch('https://mil.psy.ntu.edu.tw:5000/terms');
                 let info = `HTTP ${resp.status} ${resp.statusText}\n`;
                 const ct = resp.headers.get('content-type') || '';
 
@@ -95,6 +95,51 @@
             }
         }
 
+
+        function createTermListElement(termGroups) {
+            // termGroups: array of { letter: 'A', terms: [...] }, without empty groups
+            // Return HTML elements for displaying grouped terms
+
+            let out = "";
+
+            for (let group of termGroups) {
+                // const group = termGroups[i];
+                let html = `
+                    <div id="term-group-${group.letter}" class="term-group card mb-4">
+                        <div id="header-${group.letter}" class="card-header row d-flex align-items-center">
+                            <h3 class="offset-md-4 col-md-1 mb-0">${group.letter}</h3>
+                            <button class="btn btn-link col-md-2" data-bs-toggle="collapse" data-bs-target="#collapse-${group.letter}" aria-expanded="false" aria-controls="collapse-${group.letter}">Show Terms</button>
+                        </div>
+                        <div class="collapse" id="collapse-${group.letter}">
+                `;
+
+                // List terms
+                let termsLink = 'studies.html?query=';
+                for (let i = 0; i < group.terms.length; i++) {
+                    const term = group.terms[i];
+
+                    // Wrap every 4 terms in a row when display is medium or larger
+                    if (i % 4 === 0) {
+                        html += '<div class="row pl-2">';
+                    }
+                    html += `<a href="${termsLink}${term}" class="term-link col-md-3">${term}</a>`;
+                    if (i % 4 === 3 || i === group.terms.length - 1) {
+                        html += '</div>'; // close row
+                    }
+                }
+                html += '</div></div>';
+
+                // // Wrap every 4 cards in a row
+                // if (i % 4 == 0) {
+                //     html = "<div class='row'>" + html;
+                // }else if (i % 4 == 3 || i == termGroups.length - 1) {
+                //     html += "</div>";
+                // }
+                out += html;
+            }
+
+            return out;
+        }
         document.getElementById('btn').addEventListener('click', fetchTerms);
         fetchTerms();
         createGroupLinks();
