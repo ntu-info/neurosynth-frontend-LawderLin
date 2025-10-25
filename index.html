@@ -1,46 +1,224 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <title>Fetch /terms Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neurosynth Demo</title>
+  <!-- Bootstrap -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="./utils.js"></script>
+  <script src="./autocomplete.js"></script>
+  <link rel="stylesheet" href="./autocomplete.css" />
 </head>
-<body>
-  <h1>Fetch https://mil.psy.ntu.edu.tw:5000/terms</h1>
-  <button id="btn">Fetch again</button>
-  <pre id="out">Loading…</pre>
 
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <a class="navbar-brand" href="#">Neurosynth</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+      aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav mr-auto">
+        <li class="nav-item active">
+          <a class="nav-link" href="terms.html">All Terms</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+  <div class="d-flex align-items-center" style="height: 80vh;">
+    <div class="container">
+      <div style="text-align: center;">
+        <h1 class="title">Neurosynth Frontend Demo</h1>
+      </div>
+      <form id="searchForm" autocomplete="off" class="mt-5 col-12" action="/studies.html" method="GET">
+        <div class="row">
+          <div class="mb-2 offset-md-4 col-md-4 d-flex justify-content-center">
+            <div class="autocomplete mr-2">
+              <input type="text" required id="searchInput" class="search-input form-control"
+                placeholder="Search terms for study!" name="term" />
+            </div>
+            <button id="searchBtn" type="submit" class="btn btn-primary mr-2">Search</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
   <script>
+
+    let allTerms = [];
+
     async function fetchTerms() {
-      const out = document.getElementById('out');
-      out.textContent = 'Requesting…';
       try {
         const resp = await fetch('https://mil.psy.ntu.edu.tw:5000/terms');
         let info = `HTTP ${resp.status} ${resp.statusText}\n`;
         const ct = resp.headers.get('content-type') || '';
 
+        // Check for HTTP error
         if (!resp.ok) {
-          const text = await resp.text();
-          out.textContent = info + '\n' + text;
           return;
         }
 
+        // Handle JSON response
         if (ct.includes('application/json')) {
           const data = await resp.json();
-          out.textContent = info + '\n' + JSON.stringify(data, null, 2);
+          allTerms = data.terms || [];
+          return allTerms;
         } else {
-          const text = await resp.text();
-          out.textContent = info + '\n' + text;
+          return;
         }
       } catch (err) {
-        document.getElementById('out').textContent =
-          'Error: ' + (err && err.message ? err.message : String(err)) +
-          '\n\nCommon causes:\n1) CORS not allowed by the server\n2) Opening this file via file:// instead of a local server\n3) Network/server issues';
+        alert(err);
+        return;
       }
     }
 
-    document.getElementById('btn').addEventListener('click', fetchTerms);
-    fetchTerms();
+    async function searchTerm(terms, conditions=null) {
+      if (terms === '') {
+        // No action on empty input
+        return false;
+      }
+
+      if (typeof terms === 'string') {
+        terms = [terms];
+      }
+      
+      terms = terms.map(term => term.trim().toLowerCase());
+
+      // const allTerms = await fetchTerms();
+      // Check if the term exists in the fetched terms
+      if (!allTerms) {
+        alert('Failed to fetch terms. Please try again later, or check your network connection.');
+        return false;
+      }
+
+      for (const term of terms) {
+        if (!allTerms.includes(term)) {
+          alert('Term "' + term + '" is not in the available list. Please try another term, or check the \"All Terms\" page.');
+          return false;
+        }
+      }
+
+      if (terms.length === 1) {
+        // Single term search
+        window.location.href = `studies.html?query=${encodeURIComponent(terms[0])}`;
+        return;
+      }
+
+      let query = '';
+
+      // Join terms with conditions if multiple terms are present
+      query = terms[0] + ' ' + conditions.map((cond, index) => `${cond} ${terms[index + 1]}`).join(' ');
+      window.location.href = `studies.html?query=${encodeURIComponent(query)}`;
+    }
+
+
+    function addSearchTerm() {
+      // Triggered when clicking "Adding search term" button
+      // Create a new row with inputs: "condition", "term", "remove"
+
+      // After testing, the API only supports condition of "and" and "not"
+      let newSearchHtml = `
+        <div class="offset-md-3 col-md-1">
+          <select class="condition-select form-control" name="condition">
+            <option value="and">And</option>
+            <option value="not">Not</option>
+          </select>
+        </div>
+        <div class="col-md-4 d-flex justify-content-center">
+          <div class="autocomplete mr-2">
+            <input type="text" class="search-input form-control" placeholder="Search terms for study!" name="term"/>
+          </div>
+          <button type="button" class="btn btn-danger" onclick="removeSearchTerm(this)">Remove</button>
+        </div>
+      `;
+
+      const newSearch = document.createElement('div');
+      newSearch.classList.add('row', 'mb-2');
+      newSearch.innerHTML = newSearchHtml;
+      document.getElementById('searchForm').appendChild(newSearch);
+      // Remove the old button
+      document.getElementById('newSearchBtn').remove();
+      // Create a new search button
+      addNewSearchBtn();
+
+      // Setup autocomplete for the new input
+      setupAutocomplete();
+    }
+
+    function removeSearchTerm(button) {
+      // Remove the parent row of the button
+      const row = button.closest('.row');
+      row.remove();
+    }
+
+    function addNewSearchBtn() {
+      const newSearchBtn = document.createElement('div');
+      newSearchBtn.classList.add('row', 'mb-2', 'd-flex', 'justify-content-center');
+      newSearchBtn.id = 'newSearchBtn';
+      newSearchBtn.innerHTML = `
+        <button class="btn btn-secondary col-md-2 mr-2">Adding search term</button>
+        <a href="terms.html" class="btn btn-outline-secondary col-md-2 ">All Terms</a>
+      `;
+      document.getElementById('searchForm').appendChild(newSearchBtn);
+      newSearchBtn.querySelector('button').addEventListener('click', function (event) {
+        event.preventDefault();
+        addSearchTerm();
+      });
+    }
+
+    // Autocomplete setup
+    async function setupAutocomplete() {
+      const terms = allTerms.length > 0 ? allTerms : await fetchTerms();
+      if (terms) {
+        let searchInputs = document.querySelectorAll('.search-input');
+        searchInputs.forEach(input => {
+          autocomplete(input, terms);
+        });
+      }
+    }
+
+    document.getElementById('searchForm').addEventListener('submit', function (event) {
+      event.preventDefault();
+
+      const inputTerms = Array.from(this.querySelectorAll('input[name="term"]')).map(input => input.value);
+      if (inputTerms.length === 0) {
+        return;
+      }
+      if (inputTerms.length === 1) {
+        searchTerm(inputTerms[0]);
+        return;
+      }
+
+      const conditions = Array.from(this.querySelectorAll('select[name="condition"]')).map(select => select.value);
+
+      inputTerms.forEach((term, index) => {
+        if (term.trim() === '') {
+          inputTerms.splice(index, 1);
+          conditions.splice(index-1, 1);
+        }
+      });
+
+      searchTerm(inputTerms, conditions);
+      return;
+    });
+
+    // Enable Enter key to trigger search
+    document.querySelector('input[name="term"]').addEventListener('keyup', function (event) {
+      // Number 13 is the "Enter" key on the keyboard
+      if (event.keyCode === 13) {
+        // Cancel the default action, if needed
+        event.preventDefault();
+        // Trigger the button element with a click
+        document.getElementById("searchBtn").click();
+      }
+    });
+
+    addNewSearchBtn();
+    setupAutocomplete();
   </script>
 </body>
-</html>
 
+</html>

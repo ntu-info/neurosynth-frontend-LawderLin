@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title></title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="./utils.js"></script>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="index.html">Neurosynth</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item active">
+                    <a class="nav-link" href="terms.html">All Terms</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <h1>All Available Terms</h1>
+        <div class="row"><button id="btn" class="btn-primary offset-md-4 col-md-4">Fetch</button></div>
+        <div class="row">
+            <div class="col-md-10" id="fetch-terms">
+                <pre id="out">Loading…</pre>
+            </div>
+            <div class="col-md-2 sticky-top overflow-auto" style="height: 80vh; top: 2rem;">
+                <ul class="list-group" id="term-group-link-list">
+                </ul>
+            </div>
+    </div>
+    <script>
+        // Create link to each group
+        function smoothScrollTo(elementId) {
+            document.getElementById(elementId).scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function createGroupLinks() {
+            await fetchTerms();
+            document.querySelectorAll('.term-group').forEach(group => {
+                const letter = group.id.replace('term-group-', '');
+                const a = document.createElement('a');
+                a.href = `#term-group-${letter}`;
+                a.textContent = letter.toUpperCase();
+                const div = document.getElementById('term-group-link-list');
+                const li = document.createElement('li');
+                li.classList.add('list-group-item', 'border-0', 'text-center');
+                li.appendChild(a);
+                div.appendChild(li);
+                a.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    smoothScrollTo(`term-group-${letter}`);
+                });
+            });
+        }
+
+        async function fetchTerms() {
+            const out = document.getElementById('out');
+            out.textContent = 'Requesting…';
+            try {
+                const resp = await fetch('./terms.json');
+                let info = `HTTP ${resp.status} ${resp.statusText}\n`;
+                const ct = resp.headers.get('content-type') || '';
+
+                // Check for HTTP error
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    out.textContent = info + '\n' + text;
+                    return;
+                }
+
+                // Handle JSON response
+                if (ct.includes('application/json')) {
+                    const data = await resp.json();
+                    terms = data.terms || [];
+                    termGroups = groupByFirstLetter(terms);
+                    // out = document.createElement('div');
+                    out.innerHTML = createTermListElement(termGroups);
+                } else {
+                    const text = await resp.text();
+                    out.textContent = info + '\n' + text;
+                }
+            } catch (err) {
+                document.getElementById('out').textContent =
+                    'Error: ' + (err && err.message ? err.message : String(err)) +
+                    '\n\nCommon causes:\n1) CORS not allowed by the server\n2) Opening this file via file:// instead of a local server\n3) Network/server issues';
+            }
+        }
+
+        document.getElementById('btn').addEventListener('click', fetchTerms);
+        fetchTerms();
+        createGroupLinks();
+    </script>
+</body>
+
+</html>

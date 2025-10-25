@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title></title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="./utils.js"></script>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+        <a class="navbar-brand" href="index.html">Neurosynth</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item active">
+                    <a class="nav-link" href="terms.html">All Terms</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div class="container">
+        <h1 id="title" class="title text-center mt-4">Terms Association</h1>
+        <button id="btn" class="btn btn-primary offset-md-4 col-md-4 mt-4">Fetch</button>
+        <div id="associated-terms">
+            <pre id="out" class="text-center mt-4">Loading…</pre>
+            <div id="associated-terms-header" class="row mb-4 d-none">
+                <div class="text-dark col-md-6">
+                    <strong>Term</strong>
+                    <button id="sort-btn-alphabetical" class="btn"><i class="bi bi-caret-down-fill"></i></button>
+                </div>
+                <div class="text-dark col-md-3">
+                    <strong>Jaccard</strong>
+                    <button id="sort-btn-jaccard" class="btn"><i class="bi bi-caret-down-fill"></i></button>
+                </div>
+                <div class="text-dark col-md-3">
+                    <strong>Co-occurrences</strong>
+                    <button id="sort-btn-co_count" class="btn"><i class="bi bi-caret-down-fill"></i></button>
+                </div>
+            </div>
+            <div id="associated-terms-list">
+            </div>
+        </div>
+    </div>
+    <script>
+        const queryTerm = getQueryParam('term');
+        if (!queryTerm) {
+            window.location.href = 'terms.html';
+        }
+
+        let associatedTerms = [];
+
+        function createAssociatedTermsList(terms, sorting = 'jaccard') {
+
+            const div = document.getElementById('associated-terms-list');
+            div.innerHTML = ''; // Clear previous list
+
+            // Sort terms based on the selected sorting method
+            if (sorting === 'jaccard') {
+                // Default sorting by jaccard
+                terms.sort((a, b) => b.jaccard - a.jaccard);
+            } else if (sorting === 'co_count') {
+                terms.sort((a, b) => b.co_count - a.co_count);
+            } else if (sorting === 'alphabetical') {
+                terms.sort((a, b) => a.term.localeCompare(b.term));
+            } else {
+                console.warn(`Unknown sorting method: ${sorting}. Defaulting to jaccard.`);
+                sorting = 'jaccard';
+            }
+
+            terms.forEach(term => {
+                createAssociatedTermElement(term);
+            });
+        }
+
+        function createAssociatedTermElement(term) {
+            const div = document.querySelector('#associated-terms-list');
+            // Imput: term object with properties: term, jaccard, co_count
+            const row = document.createElement('div');
+            row.classList.add('row', 'mb-2', 'border-bottom');
+
+            const jaccard = document.createElement('p');
+            jaccard.textContent = `Jaccard: ${term.jaccard.toFixed(3)}`;
+            jaccard.classList.add('col-md-3');
+
+            const coCount = document.createElement('a');
+            coCount.textContent = `Co-occurrences: ${term.co_count}`;
+            coCount.classList.add('col-md-3');
+            coCount.href = `studies.html?query=${queryTerm} and ${term.term}`;
+
+            const a = document.createElement('a');
+            a.textContent = `${term.term}`;
+            a.href = `term_association.html?term=${term.term}`;
+            a.classList.add('col-md-6');
+
+            row.appendChild(a);
+            row.appendChild(jaccard);
+            row.appendChild(coCount);
+            div.appendChild(row);
+        }
+
+        async function fetchAssociatedTerms(term) {
+            const out = document.getElementById('out');
+            out.textContent = 'Requesting…';
+            try {
+                // console.log('Fetching term data for:', query);
+                document.getElementById('title').textContent = `All terms associated to "${queryTerm}"`;
+                const resp = await fetch('https://mil.psy.ntu.edu.tw:5000/terms/' + queryTerm);
+                let info = `HTTP ${resp.status} ${resp.statusText}\n`;
+                const ct = resp.headers.get('content-type') || '';
+
+                // Check for HTTP error
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    out.textContent = info + '\n' + text;
+                    return;
+                }
+
+                // Handle JSON response
+                if (ct.includes('application/json')) {
+                    const data = await resp.json();
+                    out.textContent = ''; // Clear out preformatted text
+                    associatedTerms = data.related;
+                    document.getElementById('associated-terms-header').classList.remove('d-none');
+                    createAssociatedTermsList(associatedTerms);
+
+                } else {
+                    const text = await resp.text();
+                    out.textContent = info + '\n' + text;
+                }
+            } catch (err) {
+                document.getElementById('out').textContent =
+                    'Error: ' + (err && err.message ? err.message : String(err)) +
+                    '\n\nCommon causes:\n1) CORS not allowed by the server\n2) Opening this file via file:// instead of a local server\n3) Network/server issues';
+            }
+        }
+
+        document.getElementById('btn').addEventListener('click', fetchAssociatedTerms);
+
+        document.querySelectorAll('#associated-terms-header .btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const sortMethod = button.id.replace('sort-btn-', '');
+                createAssociatedTermsList(associatedTerms, sortMethod);
+            });
+        });
+
+        fetchAssociatedTerms(queryTerm);
+    </script>
+</body>
+
+</html>
