@@ -308,11 +308,17 @@
             setupAutocomplete();
 
             // Enable Enter key search and AJAX search for the new input
-            newSearchInput = newSearch.querySelector('.search-input');
-            newSelectInput = newSearch.querySelector('.condition-select');
+            let newSearchInput = newSearch.querySelector('.search-input');
             enableEnterKeySearch(newSearchInput);
             enableAJAXSearch(newSearchInput);
-            enableAJAXSearch(newSelectInput);
+
+            let newSelectInput = newSearch.querySelector('.condition-select');
+            newSelectInput.addEventListener('input', function (event) {
+                if (newSearchInput.value.trim() === '') {
+                    return;
+                }
+                performAjaxSearch(newSelectInput.value);
+            });
         }
 
         function removeSearchTerm(button) {
